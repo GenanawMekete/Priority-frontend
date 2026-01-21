@@ -1,40 +1,20 @@
 import { useEffect, useState } from "react";
-import { socket } from "../socket";
-import TopBar from "../components/TopBar";
-import BingoBoard from "../components/BingoBoard";
-import PlayerCards from "../components/PlayerCards";
-import HistoryPanel from "../components/HistoryPanel";
-import BingoButton from "../components/BingoButton";
 
-export default function Game({ user, onFinish }) {
-  const [called, setCalled] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [blocked, setBlocked] = useState(false);
+export default function Lobby({ onStart }) {
+  const [time, setTime] = useState(30);
 
   useEffect(() => {
-    socket.emit("join-game", { telegramId: user.id });
-
-    socket.on("cards-assigned", setCards);
-    socket.on("number-called", n => setCalled(c => [...c, n]));
-    socket.on("false-bingo", () => setBlocked(true));
-    socket.on("game-won", data => onFinish(data));
-
-  }, []);
-
-  if (!cards.length) return <div>Assigning cards…</div>;
+    const t = setInterval(() => setTime(x => x - 1), 1000);
+    if (time === 0) onStart();
+    return () => clearInterval(t);
+  }, [time]);
 
   return (
-    <>
-      <TopBar />
-
-      <div style={{ display: "flex", gap: 10 }}>
-        <BingoBoard called={called} />
-        <HistoryPanel called={called} />
-      </div>
-
-      <PlayerCards cards={cards} called={called} blocked={blocked} />
-
-      <BingoButton user={user} disabled={blocked} />
-    </>
+    <div className="box">
+      <h2>Waiting for players…</h2>
+      <p>Game starts in {time}s</p>
+      <p>Bet: 10 ETB</p>
+      <p>Derash: 80%</p>
+    </div>
   );
 }
