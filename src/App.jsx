@@ -1,20 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import Lobby from "./screens/Lobby";
+import Game from "./screens/Game";
+import Result from "./screens/Result";
+import { initTelegram } from "./telegram";
 
-export default function Lobby({ onStart }) {
-  const [time, setTime] = useState(30);
+export default function App() {
+  const [screen, setScreen] = useState("lobby");
+  const [user, setUser] = useState(null);
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
-    const t = setInterval(() => setTime(x => x - 1), 1000);
-    if (time === 0) onStart();
-    return () => clearInterval(t);
-  }, [time]);
+    const u = initTelegram();
+    setUser(u);
+  }, []);
+
+  if (!user) return <div className="container">Loading Telegram...</div>;
 
   return (
-    <div className="box">
-      <h2>Waiting for players…</h2>
-      <p>Game starts in {time}s</p>
-      <p>Bet: 10 ETB</p>
-      <p>Derash: 80%</p>
+    <div className="container">
+      {screen === "lobby" && <Lobby user={user} onStart={() => setScreen("game")} />}
+      {screen === "game" && <Game user={user} onFinish={(r) => { setResult(r); setScreen("result"); }} />}
+      {screen === "result" && <Result data={result} onNext={() => setScreen("lobby")} />}
     </div>
   );
 }
