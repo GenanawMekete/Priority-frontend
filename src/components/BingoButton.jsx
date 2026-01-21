@@ -1,21 +1,15 @@
-import { useEffect, useState } from "react";
+import { socket } from "../socket";
 
-export default function Result({ data, onNext }) {
-  const [time, setTime] = useState(5);
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(x => x - 1), 1000);
-    if (time === 0) onNext();
-    return () => clearInterval(t);
-  }, [time]);
-
+export default function BingoButton({ user, disabled }) {
   return (
-    <div className="box">
-      <h1>🎉 BINGO!</h1>
-      <p>Winners: {data.winners.length}</p>
-      <p>Derash: {data.derash} ETB</p>
-      <p>Prize each: {data.prize} ETB</p>
-      <p>Next game in {time}s</p>
-    </div>
+    <button
+      className="bingo-btn"
+      disabled={disabled}
+      onClick={() => socket.emit("press-bingo", { telegramId: user.id })}
+    >
+      {disabled ? "BLOCKED" : "BINGO!"}
+    </button>
   );
 }
+
+
