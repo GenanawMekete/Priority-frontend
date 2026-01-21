@@ -1,8 +1,19 @@
-export default function HistoryPanel({ called }) {
+export default function PlayerCards({ cards, called, blocked }) {
   return (
-    <div className="history">
-      <h4>Called Numbers</h4>
-      {called.map((n, i) => <span key={i}>{n}, </span>)}
+    <div className="cards-wrapper">
+      {cards.map((card, idx) => (
+        <div key={idx} className="card-grid">
+          {card.flat().map((n, i) => (
+            <div
+              key={i}
+              className={`card-cell ${called.includes(n) ? "marked" : ""} ${blocked ? "blocked" : ""}`}
+            >
+              {n}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
+
