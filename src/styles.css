@@ -1,0 +1,83 @@
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #1a0f2e, #24164a);
+  font-family: Arial;
+  color: white;
+}
+
+.container { padding: 10px; }
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  background: #3b1b6f;
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.box {
+  background: #4a278a;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.cell {
+  background: #ddd;
+  color: #222;
+  padding: 8px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.called { background: orange; color: white; }
+
+.cards-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.card-cell {
+  background: #eee;
+  color: #222;
+  padding: 7px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.marked { background: #28c76f; color: white; }
+
+.history {
+  background: #2b1655;
+  padding: 8px;
+  border-radius: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bingo-btn {
+  background: gold;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.blocked { background: red !important; color: white; }
