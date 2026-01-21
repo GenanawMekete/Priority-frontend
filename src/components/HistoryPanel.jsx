@@ -1,13 +1,8 @@
-import { socket } from "../socket";
-
-export default function BingoButton({ user, disabled }) {
+export default function HistoryPanel({ called }) {
   return (
-    <button
-      className="bingo-btn"
-      disabled={disabled}
-      onClick={() => socket.emit("press-bingo", { telegramId: user.id })}
-    >
-      {disabled ? "BLOCKED" : "BINGO!"}
-    </button>
+    <div className="history">
+      <h4>Called Numbers</h4>
+      {called.map((n, i) => <span key={i}>{n}, </span>)}
+    </div>
   );
 }
