@@ -1,120 +1,115 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "../socket";
 import TopBar from "../components/TopBar";
+import BingoBoard from "../components/BingoBoard";
 import PlayerCard from "../components/PlayerCard";
 
 export default function Game({ onFinish, telegramId }) {
   const [calledNumbers, setCalledNumbers] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [winners, setWinners] = useState([]);
-  const [bingoDisabled, setBingoDisabled] = useState(false);
-
-  // Called numbers history
-  const [history, setHistory] = useState([]);
+  const [playerCards, setPlayerCards] = useState([]);
+  const [gameStatus, setGameStatus] = useState("WAITING"); // WAITING, RUNNING, FINISHED
+  const [winnerInfo, setWinnerInfo] = useState(null);
 
   useEffect(() => {
-    // Join game with telegramId
+    // Join game
     socket.emit("join-game", { telegramId });
 
-    socket.on("cards-assigned", (playerCards) => {
-      setCards(playerCards); // playerCards: array of 3 cards [{numbers: [...]}, ...]
+    // Card assigned
+    socket.on("card-assigned", ({ number, content }) => {
+      setPlayerCards((prev) => [...prev, { number, numbers: content }]);
     });
 
+    // Number drawn
     socket.on("number-called", (num) => {
       setCalledNumbers((prev) => [...prev, num]);
-      setHistory((prev) => [...prev, num]);
     });
 
+    // Game finished
     socket.on("game-won", (data) => {
-      setWinners(data.winners);
-      setBingoDisabled(true);
-
-      // Show 5s winner screen
-      setTimeout(() => {
-        onFinish(data);
-      }, 5000);
+      setWinnerInfo(data);
+      setGameStatus("FINISHED");
+      if (onFinish) onFinish(data);
     });
 
-    socket.on("false-bingo", () => {
-      alert("⚠️ Invalid Bingo! Your card will be blocked for this round.");
-      setBingoDisabled(true);
+    // New round
+    socket.on("new-round", () => {
+      setCalledNumbers([]);
+      setPlayerCards([]);
+      setGameStatus("WAITING");
+      setWinnerInfo(null);
+    });
+
+    // Player count or messages can be received
+    socket.on("player-count", (data) => {
+      console.log("Players in lobby:", data.count);
     });
 
     return () => {
-      socket.off("cards-assigned");
+      socket.off("card-assigned");
       socket.off("number-called");
       socket.off("game-won");
-      socket.off("false-bingo");
+      socket.off("new-round");
+      socket.off("player-count");
     };
   }, []);
 
-  const handleBingo = () => {
-    if (!bingoDisabled) {
-      socket.emit("press-bingo", { telegramId });
-    }
+  const pressBingo = () => {
+    socket.emit("press-bingo", { telegramId });
+  };
+
+  const startGame = () => {
+    socket.emit("start-game");
+    setGameStatus("RUNNING");
   };
 
   return (
-    <div style={{ padding: "10px" }}>
-      <TopBar calledNumbers={calledNumbers.length} />
+    <div>
+      <TopBar status={gameStatus} calledNumbers={calledNumbers} />
 
-      <h3>Your Cards</h3>
-      <div style={{ display: "flex", gap: "12px", overflowX: "auto" }}>
-        {cards.map((cardObj, idx) => (
-          <PlayerCard key={idx} card={cardObj.numbers} called={calledNumbers} />
+      {gameStatus === "WAITING" && (
+        <div style={{ margin: "10px 0" }}>
+          <button onClick={startGame} style={{ padding: "10px 20px", fontWeight: "bold" }}>
+            Start Game
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        {playerCards.map((card, i) => (
+          <PlayerCard key={i} card={card.numbers} called={calledNumbers} cardNumber={card.number} />
         ))}
       </div>
 
-      <button
-        onClick={handleBingo}
-        disabled={bingoDisabled}
-        style={{
-          marginTop: "15px",
-          padding: "12px 20px",
-          background: bingoDisabled ? "#ccc" : "gold",
-          fontWeight: "bold",
-          borderRadius: "8px",
-          cursor: bingoDisabled ? "not-allowed" : "pointer",
-        }}
-      >
-        BINGO!
-      </button>
+      {gameStatus === "RUNNING" && (
+        <button
+          onClick={pressBingo}
+          style={{
+            marginTop: 20,
+            padding: "12px 20px",
+            background: "gold",
+            borderRadius: 8,
+            fontWeight: "bold",
+          }}
+        >
+          BINGO!
+        </button>
+      )}
 
-      <div style={{ marginTop: "20px" }}>
-        <h4>Called Numbers History</h4>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-          {history.map((n, i) => (
-            <div
-              key={i}
-              style={{
-                width: "35px",
-                height: "35px",
-                background: "#3b1b6f",
-                color: "white",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                borderRadius: "6px",
-              }}
-            >
-              {n}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {winners.length > 0 && (
+      {gameStatus === "FINISHED" && winnerInfo && (
         <div
           style={{
-            marginTop: "20px",
-            padding: "15px",
+            marginTop: 20,
+            padding: 20,
             background: "rgba(0,0,0,0.7)",
-            borderRadius: "12px",
+            borderRadius: 12,
+            color: "white",
             textAlign: "center",
           }}
         >
-          <h2>🎉 Winners!</h2>
-          <p>{winners.length} player(s) won this round.</p>
+          <h2>🎉 BINGO!</h2>
+          <p>{winnerInfo.winners.length} winners</p>
+          <p>Derash: {winnerInfo.derash} ETB</p>
+          <p>Prize per winner: {winnerInfo.prizePerWinner} ETB</p>
         </div>
       )}
     </div>
