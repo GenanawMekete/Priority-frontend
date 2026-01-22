@@ -1,76 +1,68 @@
 import React, { useEffect, useState } from "react";
 import { socket } from "../socket";
-import TopBar from "../components/TopBar";
-import BingoBoard from "../components/BingoBoard";
 import PlayerCard from "../components/PlayerCard";
 
-export default function Game({ telegramId, roomId, myCards }) {
+export default function Game({ telegramId, onFinish }) {
   const [calledNumbers, setCalledNumbers] = useState([]);
+  const [myCards, setMyCards] = useState([]);
   const [winners, setWinners] = useState([]);
-  const [gameOver, setGameOver] = useState(false);
+  const [derash, setDerash] = useState(0);
 
   useEffect(() => {
-    // Start automatic game draw for this player (server handles actual draw)
-    socket.emit("start-game", { roomId });
+    // Join game
+    socket.emit("join-game", { telegramId });
 
-    // Listen for drawn numbers
-    socket.on("number-called", ({ number, roomId: rId }) => {
-      if (rId !== roomId) return;
-      setCalledNumbers((prev) => [...prev, number]);
-    });
+    // Receive player cards
+    socket.on("cards-assigned", (cards) => setMyCards(cards));
 
-    // Listen for winners
-    socket.on("game-won", ({ roomId: rId, winners, prize }) => {
-      if (rId !== roomId) return;
+    // Receive called numbers
+    socket.on("number-called", (num) =>
+      setCalledNumbers((prev) => [...prev, num])
+    );
+
+    // Receive game won
+    socket.on("game-won", ({ winners, derash }) => {
       setWinners(winners);
-      setGameOver(true);
+      setDerash(derash);
+      setTimeout(() => onFinish(), 5000); // auto proceed to next round
     });
 
     return () => {
+      socket.off("cards-assigned");
       socket.off("number-called");
       socket.off("game-won");
     };
   }, []);
 
-  const handleBingoPress = () => {
-    if (gameOver) return;
-    socket.emit("press-bingo", { telegramId, roomId });
+  const pressBingo = () => {
+    socket.emit("press-bingo", { telegramId });
   };
 
   return (
-    <div style={{ padding: "12px" }}>
-      <TopBar />
+    <div className="container">
+      <h2>Game Running</h2>
+      <button className="bingo-btn" onClick={pressBingo}>
+        BINGO!
+      </button>
 
-      <h3>Live Bingo Draw</h3>
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-        <BingoBoard called={calledNumbers} />
-        {myCards.map((card) => (
-          <div key={card.number}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {myCards.map((card, idx) => (
+          <div key={idx}>
             <h4>Card #{card.number}</h4>
-            <PlayerCard card={card.content} called={calledNumbers} />
+            <PlayerCard card={card.numbers} called={calledNumbers} />
           </div>
         ))}
       </div>
 
-      <button
-        onClick={handleBingoPress}
-        style={{
-          marginTop: "20px",
-          padding: "12px",
-          background: "gold",
-          borderRadius: "10px",
-          fontWeight: "bold",
-        }}
-      >
-        BINGO!
-      </button>
-
-      {gameOver && (
-        <div style={{ marginTop: "20px", background: "#3b1b6f", padding: "12px", borderRadius: "10px" }}>
-          <h2>🎉 Game Over!</h2>
-          <p>Winners: {winners.join(", ")}</p>
-        </div>
-      )}
+      <div className="winner-box" style={{ marginTop: 20 }}>
+        {winners.length > 0 && (
+          <>
+            <h3>🎉 Winners!</h3>
+            <p>{winners.join(", ")}</p>
+            <p>Derash: {derash}</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
