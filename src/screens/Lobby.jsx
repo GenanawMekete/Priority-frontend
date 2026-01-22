@@ -7,8 +7,8 @@ export default function Lobby({ onStart, telegramId }) {
   const TOTAL_CARDS = 400;
 
   const [time, setTime] = useState(30);
-  const [takenCards, setTakenCards] = useState([]); // numbers already taken
-  const [myCards, setMyCards] = useState([]); // selected by this player
+  const [takenCards, setTakenCards] = useState([]); // numbers taken by all
+  const [myCards, setMyCards] = useState([]); // numbers selected by this player
   const [cardsContent, setCardsContent] = useState({}); // number → card content
 
   useEffect(() => {
@@ -23,9 +23,12 @@ export default function Lobby({ onStart, telegramId }) {
       });
     }, 1000);
 
-    // Listen for card assignment from server
+    // Listen for any card assignments (all players)
     socket.on("card-assigned", ({ number, content }) => {
-      setTakenCards((prev) => [...prev, number]);
+      setTakenCards((prev) => {
+        if (!prev.includes(number)) return [...prev, number];
+        return prev;
+      });
       setCardsContent((prev) => ({ ...prev, [number]: content }));
     });
 
@@ -36,6 +39,14 @@ export default function Lobby({ onStart, telegramId }) {
   }, []);
 
   const handleSelectCard = (num) => {
+    // If already selected by this player → unselect
+    if (myCards.includes(num)) {
+      setMyCards((prev) => prev.filter((n) => n !== num));
+      socket.emit("unselect-card", { telegramId, number: num });
+      setTakenCards((prev) => prev.filter((n) => n !== num));
+      return;
+    }
+
     if (takenCards.includes(num)) return;
     if (myCards.length >= MAX_SELECTION) return;
 
@@ -60,30 +71,33 @@ export default function Lobby({ onStart, telegramId }) {
           display: "grid",
           gridTemplateColumns: "repeat(10, 1fr)",
           gap: "6px",
-          maxHeight: "400px",
+          maxHeight: "50vh",
           overflowY: "auto",
         }}
       >
-        {Array.from({ length: TOTAL_CARDS }, (_, i) => i + 1).map((num) => (
-          <div
-            key={num}
-            onClick={() => handleSelectCard(num)}
-            style={{
-              padding: "10px",
-              borderRadius: "6px",
-              textAlign: "center",
-              cursor:
-                takenCards.includes(num) || myCards.length >= MAX_SELECTION
-                  ? "not-allowed"
-                  : "pointer",
-              backgroundColor: takenCards.includes(num) ? "#ff7eb6" : "#28c76f",
-              color: "white",
-              fontWeight: "bold",
-            }}
-          >
-            {num}
-          </div>
-        ))}
+        {Array.from({ length: TOTAL_CARDS }, (_, i) => i + 1).map((num) => {
+          let bg = "#28c76f"; // free
+          if (takenCards.includes(num) && !myCards.includes(num)) bg = "#ff7eb6"; // taken by others
+          if (myCards.includes(num)) bg = "#1aeb91"; // your selection
+
+          return (
+            <div
+              key={num}
+              onClick={() => handleSelectCard(num)}
+              style={{
+                padding: "10px",
+                borderRadius: "6px",
+                textAlign: "center",
+                cursor: takenCards.includes(num) && !myCards.includes(num) ? "not-allowed" : "pointer",
+                backgroundColor: bg,
+                color: "white",
+                fontWeight: "bold",
+              }}
+            >
+              {num}
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ marginTop: "20px" }}>
