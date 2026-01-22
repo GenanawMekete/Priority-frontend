@@ -1,124 +1,119 @@
-import { useState, useEffect } from "react";
-import { socket } from "../main.jsx";
+import { useEffect, useState } from "react";
+import { socket } from "../socket";
 
-export default function Lobby({ onStart, gameInfo }) {
-  const TOTAL_CARDS = 400;
-  const CARDS_PER_PLAYER = 3;
+export default function Lobby({ onStart }) {
+  const [time, setTime] = useState(30);
+  const [cardsStatus, setCardsStatus] = useState(
+    Array.from({ length: 400 }, () => "free") // free, taken
+  );
+  const [selectedCard, setSelectedCard] = useState(null);
 
-  const [selectedCards, setSelectedCards] = useState([]); // player's selected cards
-  const [takenCards, setTakenCards] = useState([]);       // all cards taken
-  const [time, setTime] = useState(30);                   // countdown
-
-  // ==========================
-  // Listen lobby updates from backend
-  // ==========================
+  // Countdown timer
   useEffect(() => {
-    socket.on("lobby-update", ({ taken }) => {
-      setTakenCards(taken); // array of taken card numbers [12, 55, ...]
-    });
-
-    socket.on("game-starting", () => {
-      onStart();
-    });
-
-    const timer = setInterval(() => {
-      setTime((t) => t - 1);
-    }, 1000);
-
-    if (time <= 0 && selectedCards.length === CARDS_PER_PLAYER) {
-      socket.emit("ready", { selectedCards });
+    const interval = setInterval(() => setTime((t) => t - 1), 1000);
+    if (time <= 0) {
       onStart();
     }
+    return () => clearInterval(interval);
+  }, [time]);
+
+  // Listen to taken cards updates from backend
+  useEffect(() => {
+    socket.on("card-taken", ({ cardNumber }) => {
+      setCardsStatus((prev) => {
+        const newStatus = [...prev];
+        newStatus[cardNumber - 1] = "taken";
+        return newStatus;
+      });
+    });
+
+    socket.on("cards-assigned", ({ cardNumber, cardContent }) => {
+      setSelectedCard({ cardNumber, cardContent });
+    });
 
     return () => {
-      clearInterval(timer);
-      socket.off("lobby-update");
-      socket.off("game-starting");
+      socket.off("card-taken");
+      socket.off("cards-assigned");
     };
-  }, [time, selectedCards]);
+  }, []);
 
-  // ==========================
-  // Handle Card Selection
-  // ==========================
   const handleCardClick = (num) => {
-    if (takenCards.includes(num)) return; // already taken
-    if (selectedCards.includes(num)) {
-      // unselect
-      setSelectedCards(selectedCards.filter((c) => c !== num));
-    } else {
-      if (selectedCards.length < CARDS_PER_PLAYER) {
-        setSelectedCards([...selectedCards, num]);
-      } else {
-        alert(`You can only select ${CARDS_PER_PLAYER} cards`);
-      }
-    }
-  };
-
-  // ==========================
-  // Render card grid
-  // ==========================
-  const renderCardNumber = (num) => {
-    let isSelected = selectedCards.includes(num);
-    let isTaken = takenCards.includes(num);
-
-    let bgColor = "#eee"; // default
-    if (isSelected) bgColor = "green";
-    else if (isTaken) bgColor = "pink";
-
-    return (
-      <div
-        key={num}
-        onClick={() => handleCardClick(num)}
-        style={{
-          width: 40,
-          height: 40,
-          textAlign: "center",
-          lineHeight: "40px",
-          background: bgColor,
-          margin: 2,
-          borderRadius: 6,
-          fontWeight: "bold",
-          cursor: isTaken ? "not-allowed" : "pointer",
-          fontSize: 12,
-        }}
-      >
-        {num}
-      </div>
-    );
+    if (cardsStatus[num - 1] === "taken") return; // already taken
+    // Request backend to assign this card
+    socket.emit("select-card", { cardNumber: num });
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: 12 }}>
-        <h2>Choose your {CARDS_PER_PLAYER} Bingo Cards</h2>
-        <p>Time remaining: {time}s</p>
-        <p>Selected: {selectedCards.join(", ")}</p>
-      </div>
+    <div style={{ padding: 12 }}>
+      <h2>Choose your Bingo Card</h2>
+      <p>Game starts in: {time}s</p>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(10, 1fr)",
-          maxHeight: "60vh",
+          gap: 6,
+          maxHeight: "400px",
           overflowY: "scroll",
+          border: "1px solid #4a278a",
+          padding: 8,
+          borderRadius: 8,
         }}
       >
-        {Array.from({ length: TOTAL_CARDS }, (_, i) => renderCardNumber(i + 1))}
+        {cardsStatus.map((status, idx) => (
+          <div
+            key={idx}
+            onClick={() => handleCardClick(idx + 1)}
+            style={{
+              padding: 8,
+              borderRadius: 6,
+              textAlign: "center",
+              cursor: status === "free" ? "pointer" : "not-allowed",
+              background: status === "free" ? "green" : "pink",
+              color: "#fff",
+              fontWeight: "bold",
+            }}
+          >
+            {idx + 1}
+          </div>
+        ))}
       </div>
 
-      {selectedCards.length === CARDS_PER_PLAYER && (
-        <button
-          onClick={() => socket.emit("ready", { selectedCards })}
+      {selectedCard && (
+        <div
           style={{
             marginTop: 20,
             padding: 12,
-            background: "gold",
+            border: "2px solid #4a278a",
             borderRadius: 10,
-            fontWeight: "bold",
+            background: "#1a0f2e",
           }}
         >
-          Ready!
-        </button>
+          <h3>Preview Card {selectedCard.cardNumber}</h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              gap: 4,
+            }}
+          >
+            {selectedCard.cardContent.flat().map((n, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: 10,
+                  borderRadius: 6,
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  background: "#eee",
+                  color: "#222",
+                }}
+              >
+                {n}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
