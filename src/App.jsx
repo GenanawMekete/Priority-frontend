@@ -1,81 +1,70 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Lobby from "./screens/Lobby";
 import Game from "./screens/Game";
-import Result from "./screens/Result";
-import { socket, tg } from "./main.jsx";
+import { io } from "socket.io-client";
 
-export default function App({ user, roomId, connected }) {
-  const [screen, setScreen] = useState("lobby"); // lobby → game → result
-  const [resultData, setResultData] = useState(null);
-  const [gameInfo, setGameInfo] = useState({
-    bet: 10,
-    derash: 0,
-    players: [],
-  });
+// Connect to backend Socket.IO
+export const socket = io("https://priority-backend-c5sb.onrender.com"); // <-- Your Render backend URL
 
-  // ==========================
-  // Join Room & Listen Game Updates
-  // ==========================
-  useEffect(() => {
-    if (!connected) return;
+export default function App() {
+  const [telegramId, setTelegramId] = useState(""); // e.g., from Telegram login
+  const [inLobby, setInLobby] = useState(false);
+  const [inGame, setInGame] = useState(false);
+  const [roomId, setRoomId] = useState("default-room"); // default room for now
+  const [myCards, setMyCards] = useState([]);
 
-    // Join room in backend
-    socket.emit("join-room", { telegramId: user.telegramId, roomId });
+  // Step 1: Telegram ID login
+  const handleLogin = (id) => {
+    if (!id) return;
+    setTelegramId(id);
+    setInLobby(true);
+  };
 
-    // Lobby update
-    socket.on("lobby-update", (data) => {
-      setGameInfo((prev) => ({ ...prev, players: data.players }));
-    });
-
-    // Game start
-    socket.on("start-game", (data) => {
-      setGameInfo((prev) => ({ ...prev, derash: data.derash }));
-      setScreen("game");
-    });
-
-    // Game finished
-    socket.on("game-won", (data) => {
-      setResultData(data);
-      setScreen("result");
-    });
-
-    return () => {
-      socket.emit("leave-room", { telegramId: user.telegramId, roomId });
-      socket.off("lobby-update");
-      socket.off("start-game");
-      socket.off("game-won");
-    };
-  }, [connected, roomId]);
-
-  // ==========================
-  // Screen Flow
-  // ==========================
-  const renderScreen = () => {
-    switch (screen) {
-      case "lobby":
-        return <Lobby onStart={() => setScreen("game")} gameInfo={gameInfo} />;
-      case "game":
-        return <Game
-          user={user}
-          roomId={roomId}
-          gameInfo={gameInfo}
-          onFinish={(data) => { setResultData(data); setScreen("result"); }}
-        />;
-      case "result":
-        return <Result data={resultData} onNext={() => setScreen("lobby")} />;
-      default:
-        return <div>Loading...</div>;
-    }
+  // Step 2: Lobby finished → start game
+  const handleGameStart = (room, cards) => {
+    setRoomId(room);
+    setMyCards(cards);
+    setInLobby(false);
+    setInGame(true);
   };
 
   return (
-    <div className="container">
-      <div className="top-bar">
-        <div>{user.firstName}</div>
-        <div>Balance: {user.balance} ETB</div>
-        <div>Room: {roomId}</div>
-      </div>
-      {renderScreen()}
+    <div style={{ fontFamily: "Arial, sans-serif", padding: "20px" }}>
+      {!telegramId && (
+        <div>
+          <h2>Enter your Telegram ID to Join Bingo</h2>
+          <input
+            type="text"
+            placeholder="Telegram ID"
+            onChange={(e) => setTelegramId(e.target.value)}
+            value={telegramId}
+            style={{ padding: "8px", fontSize: "16px", width: "250px" }}
+          />
+          <button
+            onClick={() => handleLogin(telegramId)}
+            style={{
+              padding: "10px 20px",
+              marginLeft: "12px",
+              fontWeight: "bold",
+              background: "#28c76f",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            Join
+          </button>
+        </div>
+      )}
+
+      {inLobby && telegramId && (
+        <Lobby telegramId={telegramId} onGameStart={handleGameStart} />
+      )}
+
+      {inGame && (
+        <Game telegramId={telegramId} roomId={roomId} myCards={myCards} />
+      )}
     </div>
   );
 }
