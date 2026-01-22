@@ -8,6 +8,9 @@ export default function App() {
   const [screen, setScreen] = useState("lobby");
   const [user, setUser] = useState(null);
   const [result, setResult] = useState(null);
+  const urlParams = new URLSearchParams(window.location.search);
+const roomId = urlParams.get("room") || "main";
+socket.emit("join-game", { telegramId: user.telegramId, roomId });
 
   useEffect(() => {
     if (window.Telegram.WebApp.initData) {
