@@ -1,83 +1,162 @@
+/* ==========================
+   Global Styles
+========================== */
 body {
   margin: 0;
+  font-family: 'Arial', sans-serif;
   background: linear-gradient(180deg, #1a0f2e, #24164a);
-  font-family: Arial;
   color: white;
 }
 
-.container { padding: 10px; }
+h1, h2, h3, h4, h5 {
+  margin: 0;
+}
 
+.container {
+  padding: 12px;
+}
+
+/* ==========================
+   Top Bar
+========================== */
 .top-bar {
   display: flex;
   justify-content: space-between;
   background: #3b1b6f;
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 10px;
-}
-
-.box {
-  background: #4a278a;
-  padding: 8px 12px;
+  padding: 12px 16px;
   border-radius: 10px;
-  text-align: center;
+  margin-bottom: 12px;
 }
 
+.top-bar div {
+  font-weight: bold;
+}
+
+/* ==========================
+   Info / Boxes
+========================== */
+.info-box {
+  background: #4a278a;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* ==========================
+   Bingo Board (1–75)
+========================== */
 .board {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .cell {
   background: #ddd;
   color: #222;
-  padding: 8px;
+  padding: 12px;
   border-radius: 6px;
   text-align: center;
   font-weight: bold;
+  transition: all 0.2s ease;
 }
 
-.called { background: orange; color: white; }
-
-.cards-wrapper {
-  display: flex;
-  gap: 10px;
+.cell.called {
+  background: orange;
+  color: white;
 }
 
+/* ==========================
+   Player Cards (3 side by side)
+========================== */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  gap: 5px;
+  margin-top: 10px;
 }
 
 .card-cell {
   background: #eee;
   color: #222;
-  padding: 7px;
+  padding: 12px;
   border-radius: 6px;
   text-align: center;
-}
-
-.marked { background: #28c76f; color: white; }
-
-.history {
-  background: #2b1655;
-  padding: 8px;
-  border-radius: 10px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.bingo-btn {
-  background: gold;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  font-size: 18px;
   font-weight: bold;
-  width: 100%;
-  margin-top: 10px;
+  transition: all 0.2s ease;
 }
 
-.blocked { background: red !important; color: white; }
+.card-cell.marked {
+  background: #28c76f;
+  color: white;
+}
+
+.card-cell.free {
+  background: gold;
+  color: #222;
+}
+
+/* ==========================
+   Winner Box / Result
+========================== */
+.winner-box {
+  background: rgba(0,0,0,0.7);
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  margin: 12px 0;
+}
+
+.winner-box h1 {
+  font-size: 2em;
+  margin-bottom: 8px;
+}
+
+.winner-box p {
+  margin: 4px 0;
+  font-weight: bold;
+}
+
+/* ==========================
+   Buttons
+========================== */
+button {
+  cursor: pointer;
+  padding: 12px 24px;
+  margin-top: 12px;
+  background: gold;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  color: #222;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: #f1c40f;
+}
+
+/* ==========================
+   Timer
+========================== */
+.timer {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+/* ==========================
+   Responsive
+========================== */
+@media (max-width: 768px) {
+  .board, .card-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .top-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
