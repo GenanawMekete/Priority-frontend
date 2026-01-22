@@ -1,52 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { socket } from "../socket";
 import PlayerCard from "../components/PlayerCard";
+import { socket } from "../socket";
 
-export default function Lobby({ telegramId, onGameStart }) {
+export default function Lobby({ onStart, telegramId }) {
   const MAX_SELECTION = 3;
   const TOTAL_CARDS = 400;
-  const LOBBY_TIME = 30;
 
-  const [time, setTime] = useState(LOBBY_TIME);
-  const [takenCards, setTakenCards] = useState([]); // numbers already taken
-  const [myCards, setMyCards] = useState([]); // selected by this player
-  const [cardsContent, setCardsContent] = useState({}); // number → card content
-
-  const roomId = "default-room"; // future multi-room support
+  const [time, setTime] = useState(30);
+  const [takenCards, setTakenCards] = useState([]);
+  const [myCards, setMyCards] = useState([]);
+  const [cardsContent, setCardsContent] = useState({});
 
   useEffect(() => {
-    // Join lobby
-    socket.emit("join-lobby", { telegramId, roomId });
-
-    // Receive currently taken cards
-    socket.on("current-taken-cards", ({ cards }) => {
-      const numbers = cards.map((c) => c.number);
-      const contentMap = {};
-      cards.forEach((c) => (contentMap[c.number] = c.content));
-      setTakenCards(numbers);
-      setCardsContent(contentMap);
-    });
-
-    // New card assignment
-    socket.on("card-assigned", ({ number, content }) => {
-      setTakenCards((prev) => [...prev, number]);
-      setCardsContent((prev) => ({ ...prev, [number]: content }));
-    });
-
-    // Lobby countdown
+    // Countdown timer
     const timer = setInterval(() => {
       setTime((t) => {
         if (t <= 1) {
           clearInterval(timer);
-          onGameStart(roomId, myCards); // start game automatically
+          onStart();
         }
         return t - 1;
       });
     }, 1000);
 
+    // Listen for card assignment from server
+    socket.on("card-assigned", ({ number, content }) => {
+      setTakenCards((prev) => [...prev, number]);
+      setCardsContent((prev) => ({ ...prev, [number]: content }));
+    });
+
     return () => {
       clearInterval(timer);
-      socket.off("current-taken-cards");
       socket.off("card-assigned");
     };
   }, []);
@@ -55,16 +39,14 @@ export default function Lobby({ telegramId, onGameStart }) {
     if (takenCards.includes(num)) return;
     if (myCards.length >= MAX_SELECTION) return;
 
-    // Request server to assign this card
-    socket.emit("select-card", { telegramId, roomId, number: num });
+    socket.emit("select-card", { telegramId, number: num });
 
-    // Optimistic UI
     setTakenCards((prev) => [...prev, num]);
     setMyCards((prev) => [...prev, num]);
   };
 
   return (
-    <div style={{ padding: "12px" }}>
+    <div className="container">
       <h2>Choose Your Bingo Cards</h2>
       <p>Time remaining: {time}s</p>
       <p>
