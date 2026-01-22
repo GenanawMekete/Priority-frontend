@@ -1,10 +1,21 @@
-export default function BingoBoard({ called }) {
-  const nums = Array.from({ length: 75 }, (_, i) => i + 1);
+import React from "react";
 
+export default function BingoBoard({ called }) {
+  const numbers = Array.from({ length: 75 }, (_, i) => i + 1);
   return (
-    <div className="board">
-      {nums.map(n => (
-        <div key={n} className={called.includes(n) ? "cell called" : "cell"}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(15, 1fr)", gap: 4 }}>
+      {numbers.map((n) => (
+        <div
+          key={n}
+          style={{
+            padding: 6,
+            borderRadius: 4,
+            textAlign: "center",
+            backgroundColor: called.includes(n) ? "orange" : "#ddd",
+            color: called.includes(n) ? "white" : "#222",
+            fontWeight: "bold",
+          }}
+        >
           {n}
         </div>
       ))}
