@@ -1,24 +1,27 @@
-export default function PlayerCard({ card, called }) {
+export default function PlayerCard({ card, called, index }) {
   return (
-    <div>
-      <h4>Your Cards</h4>
-      <div style={{ display: "flex", gap: 8 }}>
-        {card.map((singleCard, idx) => (
-          <div key={idx} className="card-grid">
-            {singleCard.flat().map((n, i) => (
-              <div
-                key={i}
-                className={
-                  n === "FREE"
-                    ? "card-cell free"
-                    : called.includes(n)
-                    ? "card-cell marked"
-                    : "card-cell"
-                }
-              >
-                {n}
-              </div>
-            ))}
+    <div style={{ border: "2px solid #4a278a", padding: 8, borderRadius: 10, minWidth: 200 }}>
+      <h4>Card {index + 1}</h4>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
+          gap: 4,
+        }}
+      >
+        {card.flat().map((n, i) => (
+          <div
+            key={i}
+            style={{
+              padding: 10,
+              borderRadius: 6,
+              textAlign: "center",
+              fontWeight: "bold",
+              background: called.includes(n) ? "#28c76f" : "#eee",
+              color: called.includes(n) ? "#fff" : "#222",
+            }}
+          >
+            {n}
           </div>
         ))}
       </div>
