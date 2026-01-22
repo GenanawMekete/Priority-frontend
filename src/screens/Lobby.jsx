@@ -2,61 +2,55 @@ import React, { useEffect, useState } from "react";
 import { socket } from "../socket";
 import PlayerCard from "../components/PlayerCard";
 
-export default function Lobby({ telegramId, onStart, roomId = "default" }) {
+export default function Lobby({ telegramId, onGameStart }) {
   const MAX_SELECTION = 3;
   const TOTAL_CARDS = 400;
+  const LOBBY_TIME = 30;
 
-  const [time, setTime] = useState(30);
-  const [takenCards, setTakenCards] = useState([]); // cards taken globally
-  const [myCards, setMyCards] = useState([]); // cards selected by this player
+  const [time, setTime] = useState(LOBBY_TIME);
+  const [takenCards, setTakenCards] = useState([]); // numbers already taken
+  const [myCards, setMyCards] = useState([]); // selected by this player
   const [cardsContent, setCardsContent] = useState({}); // number → card content
 
-  // ===========================
-  // Countdown Timer
-  // ===========================
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime((t) => {
-        if (t <= 1) {
-          clearInterval(timer);
-          onStart(); // move to Game.jsx
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const roomId = "default-room"; // future multi-room support
 
-  // ===========================
-  // Socket Listeners
-  // ===========================
   useEffect(() => {
-    // Join room
+    // Join lobby
     socket.emit("join-lobby", { telegramId, roomId });
 
-    // Listen for card assignment updates from server
+    // Receive currently taken cards
+    socket.on("current-taken-cards", ({ cards }) => {
+      const numbers = cards.map((c) => c.number);
+      const contentMap = {};
+      cards.forEach((c) => (contentMap[c.number] = c.content));
+      setTakenCards(numbers);
+      setCardsContent(contentMap);
+    });
+
+    // New card assignment
     socket.on("card-assigned", ({ number, content }) => {
       setTakenCards((prev) => [...prev, number]);
       setCardsContent((prev) => ({ ...prev, [number]: content }));
     });
 
-    // Receive multiple cards at once (e.g., on reconnect)
-    socket.on("current-taken-cards", ({ cards }) => {
-      setTakenCards(cards.map((c) => c.number));
-      const contentMap = {};
-      cards.forEach((c) => (contentMap[c.number] = c.content));
-      setCardsContent(contentMap);
-    });
+    // Lobby countdown
+    const timer = setInterval(() => {
+      setTime((t) => {
+        if (t <= 1) {
+          clearInterval(timer);
+          onGameStart(roomId, myCards); // start game automatically
+        }
+        return t - 1;
+      });
+    }, 1000);
 
     return () => {
-      socket.off("card-assigned");
+      clearInterval(timer);
       socket.off("current-taken-cards");
+      socket.off("card-assigned");
     };
   }, []);
 
-  // ===========================
-  // Handle Card Selection
-  // ===========================
   const handleSelectCard = (num) => {
     if (takenCards.includes(num)) return;
     if (myCards.length >= MAX_SELECTION) return;
@@ -65,8 +59,8 @@ export default function Lobby({ telegramId, onStart, roomId = "default" }) {
     socket.emit("select-card", { telegramId, roomId, number: num });
 
     // Optimistic UI
-    setMyCards((prev) => [...prev, num]);
     setTakenCards((prev) => [...prev, num]);
+    setMyCards((prev) => [...prev, num]);
   };
 
   return (
@@ -77,7 +71,6 @@ export default function Lobby({ telegramId, onStart, roomId = "default" }) {
         Selected: {myCards.length}/{MAX_SELECTION}
       </p>
 
-      {/* Scrollable Card Grid 1–400 */}
       <div
         style={{
           display: "grid",
@@ -85,10 +78,6 @@ export default function Lobby({ telegramId, onStart, roomId = "default" }) {
           gap: "6px",
           maxHeight: "400px",
           overflowY: "auto",
-          border: "1px solid #444",
-          padding: "6px",
-          borderRadius: "8px",
-          backgroundColor: "#1a0f2e",
         }}
       >
         {Array.from({ length: TOTAL_CARDS }, (_, i) => i + 1).map((num) => (
@@ -113,19 +102,9 @@ export default function Lobby({ telegramId, onStart, roomId = "default" }) {
         ))}
       </div>
 
-      {/* Display Selected Cards Content */}
       <div style={{ marginTop: "20px" }}>
         {myCards.map((num, idx) => (
-          <div
-            key={idx}
-            style={{
-              marginBottom: "15px",
-              padding: "8px",
-              border: "1px solid #444",
-              borderRadius: "6px",
-              backgroundColor: "#24164a",
-            }}
-          >
+          <div key={idx} style={{ marginBottom: "15px" }}>
             <h4>Card #{num}</h4>
             {cardsContent[num] ? (
               <PlayerCard card={cardsContent[num]} called={[]} />
