@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Lobby from "./screens/Lobby";
 import Game from "./screens/Game";
 import Result from "./screens/Result";
-import { initTelegram } from "./telegram";
+import axios from "axios";
 
 export default function App() {
   const [screen, setScreen] = useState("lobby");
@@ -10,15 +10,24 @@ export default function App() {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    const u = initTelegram();
-    setUser(u);
+    if (window.Telegram.WebApp.initData) {
+      const tg = window.Telegram.WebApp;
+      const tgData = tg.initData;
+
+      // Send initData to backend to verify & create user
+      axios.post("https://priority-backend-c5sb.onrender.com/api/auth/telegram", {
+        initData: tgData
+      }).then(res => {
+        setUser(res.data.user);
+      }).catch(console.error);
+    }
   }, []);
 
-  if (!user) return <div className="container">Loading Telegram...</div>;
+  if (!user) return <div>Loading...</div>;
 
   return (
     <div className="container">
-      {screen === "lobby" && <Lobby user={user} onStart={() => setScreen("game")} />}
+      {screen === "lobby" && <Lobby onStart={() => setScreen("game")} />}
       {screen === "game" && <Game user={user} onFinish={(r) => { setResult(r); setScreen("result"); }} />}
       {screen === "result" && <Result data={result} onNext={() => setScreen("lobby")} />}
     </div>
