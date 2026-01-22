@@ -1,8 +1,7 @@
-export default function PlayerCard({ card, called }) {
-  // card: 5x5 array
+export default function PlayerCard({ card, called, index }) {
   return (
-    <div>
-      <h4>Your Card</h4>
+    <div style={{ border: "2px solid #4a278a", padding: 8, borderRadius: 10, minWidth: 200 }}>
+      <h4>Card {index + 1}</h4>
       <div
         style={{
           display: "grid",
@@ -10,27 +9,21 @@ export default function PlayerCard({ card, called }) {
           gap: 4,
         }}
       >
-        {card.flat().map((n, i) => {
-          let isFree = n === "FREE";
-          let isCalled = called.includes(n);
-          return (
-            <div
-              key={i}
-              style={{
-                width: 40,
-                height: 40,
-                textAlign: "center",
-                lineHeight: "40px",
-                background: isFree ? "gold" : isCalled ? "#28c76f" : "#eee",
-                color: isFree || isCalled ? "white" : "#222",
-                borderRadius: 6,
-                fontWeight: "bold",
-              }}
-            >
-              {n}
-            </div>
-          );
-        })}
+        {card.flat().map((n, i) => (
+          <div
+            key={i}
+            style={{
+              padding: 10,
+              borderRadius: 6,
+              textAlign: "center",
+              fontWeight: "bold",
+              background: called.includes(n) ? "#28c76f" : "#eee",
+              color: called.includes(n) ? "#fff" : "#222",
+            }}
+          >
+            {n}
+          </div>
+        ))}
       </div>
     </div>
   );
