@@ -2,41 +2,45 @@ import { useEffect, useState } from "react";
 import { socket } from "../socket";
 import TopBar from "../components/TopBar";
 import BingoBoard from "../components/BingoBoard";
-import PlayerCards from "../components/PlayerCards";
+import PlayerCard from "../components/PlayerCard";
 import HistoryPanel from "../components/HistoryPanel";
-import BingoButton from "../components/BingoButton";
 
-export default function Game({ user, onFinish }) {
+export default function Game({ user, roomId, onFinish }) {
   const [called, setCalled] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [blocked, setBlocked] = useState(false);
+  const [card, setCard] = useState(null);
 
   useEffect(() => {
-    socket.emit("join-game", { telegramId: user.id });
+    socket.emit("join-game", { telegramId: user.telegramId, roomId });
 
-    socket.on("cards-assigned", setCards);
+    socket.on("card-assigned", setCard);
     socket.on("number-called", n => setCalled(c => [...c, n]));
-    socket.on("false-bingo", () => setBlocked(true));
     socket.on("game-won", data => onFinish(data));
 
+    return () => {
+      socket.off("card-assigned");
+      socket.off("number-called");
+      socket.off("game-won");
+    };
   }, []);
 
-  if (!cards.length) return <div>Assigning cards…</div>;
+  if (!card) return <div>Loading cards...</div>;
 
   return (
     <>
-      <TopBar />
-
-      <div style={{ display: "flex", gap: 10 }}>
+      <TopBar user={user} roomId={roomId} />
+      <div style={{ display: "flex", gap: 12 }}>
         <BingoBoard called={called} />
-        <HistoryPanel called={called} />
+        <div>
+          <PlayerCard card={card.numbers} called={called} />
+          <button
+            onClick={() => socket.emit("press-bingo", { telegramId: user.telegramId, roomId })}
+            style={{ marginTop: 10, padding: 12, background: "gold", borderRadius: 10, fontWeight: "bold" }}
+          >
+            BINGO!
+          </button>
+          <HistoryPanel calledNumbers={called} />
+        </div>
       </div>
-
-      <PlayerCards cards={cards} called={called} blocked={blocked} />
-
-      <BingoButton user={user} disabled={blocked} />
     </>
   );
 }
-
-
