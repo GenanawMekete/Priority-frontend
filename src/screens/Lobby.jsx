@@ -1,24 +1,23 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
 
-export default function Lobby({ onStart }) {
-  const [time, setTime] = useState(30);
+export default function Lobby({ onStart, userTelegramId }) {
   const [cardsStatus, setCardsStatus] = useState(
-    Array.from({ length: 400 }, () => "free") // free, taken
+    Array.from({ length: 400 }, () => "free")
   );
-  const [selectedCard, setSelectedCard] = useState(null);
+  const [selectedCards, setSelectedCards] = useState([]);
+  const [time, setTime] = useState(30);
 
-  // Countdown timer
   useEffect(() => {
-    const interval = setInterval(() => setTime((t) => t - 1), 1000);
-    if (time <= 0) {
-      onStart();
-    }
-    return () => clearInterval(interval);
-  }, [time]);
+    socket.emit("join-lobby", { telegramId: userTelegramId });
 
-  // Listen to taken cards updates from backend
-  useEffect(() => {
+    socket.on("lobby-status", ({ takenCards, playerCards }) => {
+      const newStatus = [...cardsStatus];
+      takenCards.forEach((n) => (newStatus[n - 1] = "taken"));
+      setCardsStatus(newStatus);
+      setSelectedCards(playerCards);
+    });
+
     socket.on("card-taken", ({ cardNumber }) => {
       setCardsStatus((prev) => {
         const newStatus = [...prev];
@@ -28,93 +27,69 @@ export default function Lobby({ onStart }) {
     });
 
     socket.on("cards-assigned", ({ cardNumber, cardContent }) => {
-      setSelectedCard({ cardNumber, cardContent });
+      setSelectedCards((prev) => [...prev, { cardNumber, cardContent }]);
+      setCardsStatus((prev) => {
+        const newStatus = [...prev];
+        newStatus[cardNumber - 1] = "taken";
+        return newStatus;
+      });
     });
 
+    socket.on("game-started", () => onStart());
+
     return () => {
+      socket.off("lobby-status");
       socket.off("card-taken");
       socket.off("cards-assigned");
+      socket.off("game-started");
     };
   }, []);
 
+  useEffect(() => {
+    const t = setInterval(() => setTime((x) => x - 1), 1000);
+    if (time === 0) onStart();
+    return () => clearInterval(t);
+  }, [time]);
+
   const handleCardClick = (num) => {
-    if (cardsStatus[num - 1] === "taken") return; // already taken
-    // Request backend to assign this card
-    socket.emit("select-card", { cardNumber: num });
+    if (cardsStatus[num - 1] === "taken") return;
+    if (selectedCards.length >= 3) return;
+    socket.emit("select-card", { telegramId: userTelegramId, cardNumber: num });
   };
 
   return (
-    <div style={{ padding: 12 }}>
-      <h2>Choose your Bingo Card</h2>
-      <p>Game starts in: {time}s</p>
-
+    <div>
+      <h2>Lobby - Pick up to 3 cards</h2>
+      <p>Time remaining: {time}s</p>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(10, 1fr)",
-          gap: 6,
+          gap: "4px",
           maxHeight: "400px",
           overflowY: "scroll",
-          border: "1px solid #4a278a",
-          padding: 8,
-          borderRadius: 8,
         }}
       >
-        {cardsStatus.map((status, idx) => (
+        {cardsStatus.map((status, i) => (
           <div
-            key={idx}
-            onClick={() => handleCardClick(idx + 1)}
+            key={i}
+            onClick={() => handleCardClick(i + 1)}
             style={{
-              padding: 8,
-              borderRadius: 6,
+              padding: "6px",
+              background: status === "free" ? "green" : "pink",
+              color: "white",
               textAlign: "center",
               cursor: status === "free" ? "pointer" : "not-allowed",
-              background: status === "free" ? "green" : "pink",
-              color: "#fff",
-              fontWeight: "bold",
             }}
           >
-            {idx + 1}
+            {i + 1}
           </div>
         ))}
       </div>
-
-      {selectedCard && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 12,
-            border: "2px solid #4a278a",
-            borderRadius: 10,
-            background: "#1a0f2e",
-          }}
-        >
-          <h3>Preview Card {selectedCard.cardNumber}</h3>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: 4,
-            }}
-          >
-            {selectedCard.cardContent.flat().map((n, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: 10,
-                  borderRadius: 6,
-                  textAlign: "center",
-                  fontWeight: "bold",
-                  background: "#eee",
-                  color: "#222",
-                }}
-              >
-                {n}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <p>
+        Selected cards:{" "}
+        {selectedCards.map((c) => c.cardNumber).join(", ") || "None"}
+      </p>
     </div>
   );
 }
