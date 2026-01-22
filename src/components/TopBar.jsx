@@ -1,11 +1,9 @@
-import Wallet from "./Wallet";
-
-export default function TopBar() {
+export default function TopBar({ user, roomId }) {
   return (
     <div className="top-bar">
-      <div className="box">Players: LIVE</div>
-      <Wallet />
-      <div className="box">Bet: 10</div>
+      <div>Room: {roomId}</div>
+      <div>User: {user.firstName}</div>
+      <div>Balance: {user.balance} ETB</div>
     </div>
   );
 }
